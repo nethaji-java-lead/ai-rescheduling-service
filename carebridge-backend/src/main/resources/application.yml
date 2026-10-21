@@ -19,20 +19,16 @@ spring:
       ddl-auto: create-drop
     open-in-view: false
     show-sql: false
+carebridge:
   ai:
-    openai:
-      base-url: ${LOCAL_LLM_BASE_URL:http://localhost:1234/v1}
-      api-key: ${LOCAL_LLM_API_KEY:local}
-      chat:
-        options:
-          model: ${LOCAL_LLM_MODEL:wareef/Qwen3-VL-8B-Instruct-Q4_K_M-GGUF}
-      audio:
-        speech:
-          enabled: false
+    provider: lmstudio
+    base-url: ${CAREBRIDGE_AI_BASE_URL:http://localhost:1235/v1}
+    model: ${CAREBRIDGE_AI_MODEL:llama-3.2-3b-instruct}
+    api-key: ${CAREBRIDGE_AI_API_KEY:lm-studio}
 
 scheduling:
-  strategy: ${SCHEDULING_STRATEGY:rule-based}
+  strategy: ${SCHEDULING_STRATEGY:ai}
 
 logging:
   level:
-    com.example.carebridge: INFO
+    com.carebridge: INFO
