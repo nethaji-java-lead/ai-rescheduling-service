@@ -13,6 +13,7 @@ Default scheduling strategy is rule-based; no API key is required.
 
 ## URLs
 - API: http://localhost:8080
+- Front-desk rescheduling desk: http://localhost:8080/
 - Swagger UI: http://localhost:8080/swagger-ui/index.html
 - H2 console: http://localhost:8080/h2-console
 - JDBC URL: `jdbc:h2:mem:carebridgedb`
@@ -44,6 +45,13 @@ Cancel a slot:
 ```bash
 curl -X PATCH http://localhost:8080/slots/1/status -H "Content-Type: application/json" -d '{"status":"CANCELLED"}'
 ```
+
+Mark a room unavailable (automatically triggers suggestions for booked appointments in that room):
+```bash
+curl -X PATCH http://localhost:8080/rooms/1/availability -H "Content-Type: application/json" -d '{"available":false}'
+```
+
+The front-desk desk refreshes pending suggestions automatically and supports accepting or rejecting them. Accepting a suggestion locks the appointment and replacement slot, rechecks provider/room availability, and commits the appointment and slot updates in one transaction.
 
 ## AI mode
 Set environment variables before startup:

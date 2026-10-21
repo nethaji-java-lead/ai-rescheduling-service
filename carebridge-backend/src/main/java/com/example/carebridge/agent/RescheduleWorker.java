@@ -24,17 +24,24 @@ public class RescheduleWorker {
   if (event.appointmentId()!=null) {
    affected=appointments.findById(event.appointmentId()).filter(a -> a.getStatus()==AppointmentStatus.CONFIRMED || a.getStatus()==AppointmentStatus.RESCHEDULE_PENDING).map(List::of).orElse(List.of());
   } else if (event.providerId()!=null) {
-   affected=appointments.findByProviderIdAndStatus(event.providerId(), AppointmentStatus.CONFIRMED);
+   affected=appointments.findByProviderIdAndStatusInOrderByIdAsc(event.providerId(),
+     List.of(AppointmentStatus.CONFIRMED, AppointmentStatus.RESCHEDULE_PENDING));
   } else return;
-  for (Appointment appointment : affected) {
+  for (Appointment candidate : affected) {
    try {
+    Appointment appointment=appointments.findByIdForUpdate(candidate.getId()).orElse(null);
+    if (appointment==null || (appointment.getStatus()!=AppointmentStatus.CONFIRMED
+      && appointment.getStatus()!=AppointmentStatus.RESCHEDULE_PENDING)) continue;
+    if (event.providerId()!=null && !appointment.getProvider().getId().equals(event.providerId())) continue;
     if (suggestions.existsByAppointmentIdAndTriggerReasonAndStatus(appointment.getId(), event.triggerReason(), SuggestionStatus.PENDING)) continue;
     List<Slot> open=slots.findByStatusOrderByStartTimeAsc(SlotStatus.OPEN);
     List<Provider> roster=providers.findAll();
     List<SchedulingRecommendation> recommendations=engine.recommend(appointment, open, roster, event.triggerReason());
-    SchedulingRecommendation chosen=recommendations.stream().filter(r -> open.stream().anyMatch(s -> s.getId().equals(r.slotId())
+    SchedulingRecommendation chosen=recommendations==null ? null : recommendations.stream().filter(r -> r!=null && open.stream().anyMatch(s -> s.getId().equals(r.slotId())
        && s.getStatus()==SlotStatus.OPEN && s.getRoom().isAvailable()
        && s.getProvider().getStatus()==ProviderStatus.AVAILABLE
+       && (s.getProvider().getId().equals(appointment.getProvider().getId())
+         || s.getProvider().getSpecialty()==appointment.getProvider().getSpecialty())
        && (r.alternateProviderId()==null || r.alternateProviderId().equals(s.getProvider().getId()))))
       .findFirst().orElse(null);
     if (chosen==null) { log.warn("No valid replacement found for appointment {}", appointment.getId()); continue; }
@@ -44,7 +51,7 @@ public class RescheduleWorker {
     if (appointment.getStatus()==AppointmentStatus.CONFIRMED) appointment.markReschedulePending();
     suggestions.save(new RescheduleSuggestion(appointment, recommended, alternate, chosen.confidence(), chosen.reasoning(), event.triggerReason()));
    } catch (Exception ex) {
-    log.error("Rescheduling failed for appointment {} with trigger {}", appointment.getId(), event.triggerReason(), ex);
+    log.error("Rescheduling failed for appointment {} with trigger {}", candidate.getId(), event.triggerReason(), ex);
    }
   }
  }

@@ -10,6 +10,7 @@ CareBridge needs to react to provider unavailability and cancelled slots, propos
 - Validate LLM recommendations against current slots, providers, room availability, and status before persisting.
 - On AI failure, use rule-based recommendations.
 - Publish events in the originating transaction and consume them after commit asynchronously.
+- Serve a lightweight front-desk review screen from the backend; provider, slot, and room availability changes are available through the same API.
 - Require human approval. Accepting a suggestion updates appointment and slot state transactionally with pessimistic locking and JPA optimistic versions.
 - Model rooms minimally so slot eligibility can account for room availability.
 

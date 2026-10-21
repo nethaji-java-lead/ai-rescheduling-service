@@ -16,15 +16,20 @@ public class AiSchedulingStrategy implements SchedulingStrategy {
 
  @Override
  public List<SchedulingRecommendation> recommend(Appointment appointment, List<Slot> openSlots, List<Provider> providers, TriggerReason reason) {
-  String slotData = openSlots.stream().filter(s -> s.getStatus() == SlotStatus.OPEN && s.getRoom().isAvailable())
+  String slotData = openSlots.stream().filter(s -> s.getStatus() == SlotStatus.OPEN && s.getRoom().isAvailable()
+      && s.getProvider().getStatus() == ProviderStatus.AVAILABLE
+      && (s.getProvider().getId().equals(appointment.getProvider().getId())
+        || s.getProvider().getSpecialty() == appointment.getProvider().getSpecialty()))
    .map(s -> "slotId="+s.getId()+", start="+s.getStartTime()+", providerId="+s.getProvider().getId()+
      ", providerName="+s.getProvider().getName()+", specialty="+s.getProvider().getSpecialty()+
      ", providerStatus="+s.getProvider().getStatus()+", room="+s.getRoom().getName())
-   .collect(Collectors.joining("\\n"));
+   .collect(Collectors.joining("\n"));
   String providerData = providers.stream().map(p -> p.getId()+":"+p.getName()+":"+p.getSpecialty()+":"+p.getStatus()).collect(Collectors.joining(", "));
   String triggerInstructions = reason == TriggerReason.SLOT_CANCELLED
    ? "Prefer a replacement slot with the same provider. Use another provider only if no suitable same-provider slot exists."
-   : "The original provider is offline; you may recommend an available alternate provider with matching specialty.";
+   : reason == TriggerReason.ROOM_UNAVAILABLE
+    ? "The original room is unavailable; recommend an open slot in an available room with the same provider if possible."
+    : "The original provider is unavailable; you may recommend an available alternate provider with matching specialty.";
   String answer = chatClient.prompt().system("""
     You are CareBridge's appointment scheduling advisor. Recommend only IDs present in the supplied data.
     Return exactly one JSON object with keys slotId (number), alternateProviderId (number or null),
@@ -33,12 +38,12 @@ public class AiSchedulingStrategy implements SchedulingStrategy {
     """).user("""
     Trigger: %s
     Policy: %s
-    Appointment: id=%d, type=%s, patient=%s, currentProvider=%s, currentSpecialty=%s
+    Appointment: id=%d, type=%s, currentProvider=%s, currentSpecialty=%s
     Available slots:
     %s
     Provider roster: %s
     """.formatted(reason, triggerInstructions, appointment.getId(), appointment.getType(),
-      appointment.getPatientName(), appointment.getProvider().getName(), appointment.getProvider().getSpecialty(), slotData, providerData))
+      appointment.getProvider().getName(), appointment.getProvider().getSpecialty(), slotData, providerData))
     .call().content();
   try {
    String json = answer.replaceAll("(?s)^.*?\\{", "{").replaceAll("\\}.*$", "}");

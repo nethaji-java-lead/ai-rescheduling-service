@@ -8,6 +8,7 @@ import java.util.*;
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
     List<Appointment> findByStatusOrderByCreatedAtDesc(AppointmentStatus status);
     List<Appointment> findByProviderIdAndStatus(Long providerId, AppointmentStatus status);
+    List<Appointment> findByProviderIdAndStatusInOrderByIdAsc(Long providerId, Collection<AppointmentStatus> statuses);
     Optional<Appointment> findBySlotIdAndStatusIn(Long slotId, Collection<AppointmentStatus> statuses);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from Appointment a where a.id = :id")

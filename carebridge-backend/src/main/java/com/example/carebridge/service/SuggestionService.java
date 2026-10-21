@@ -41,7 +41,10 @@ public class SuggestionService {
   Slot oldSlot=slots.findByIdForUpdate(a.getSlot().getId()).orElseThrow(()->new ResourceNotFoundException("Previous slot not found"));
   newSlot.setStatus(SlotStatus.BOOKED);
   if (oldSlot.getId().equals(newSlot.getId())) throw new ConflictException("Replacement slot must differ from current slot");
-  if (oldSlot.getStatus()==SlotStatus.BOOKED) oldSlot.setStatus(SlotStatus.OPEN);
+  if (oldSlot.getStatus()==SlotStatus.BOOKED) {
+   oldSlot.setStatus(oldSlot.getProvider().getStatus()==ProviderStatus.AVAILABLE && oldSlot.getRoom().isAvailable()
+     ? SlotStatus.OPEN : SlotStatus.CANCELLED);
+  }
   a.completeReschedule(newProvider, newSlot);
   s.setStatus(SuggestionStatus.ACCEPTED);
   suggestions.findByAppointmentIdAndStatus(a.getId(), SuggestionStatus.PENDING).stream()

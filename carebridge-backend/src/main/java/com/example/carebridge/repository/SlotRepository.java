@@ -8,6 +8,7 @@ import java.util.*;
 public interface SlotRepository extends JpaRepository<Slot, Long> {
     List<Slot> findByStatusOrderByStartTimeAsc(SlotStatus status);
     List<Slot> findByProviderIdAndStatusOrderByStartTimeAsc(Long providerId, SlotStatus status);
+    List<Slot> findByRoomIdAndStatus(Long roomId, SlotStatus status);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from Slot s where s.id = :id")
     Optional<Slot> findByIdForUpdate(@Param("id") Long id);

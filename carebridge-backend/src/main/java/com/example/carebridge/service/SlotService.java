@@ -16,6 +16,11 @@ public class SlotService {
  public SlotResponse updateStatus(Long id, UpdateSlotStatusRequest request) {
   var slot=slots.findByIdForUpdate(id).orElseThrow(()->new ResourceNotFoundException("Slot not found"));
   if (request.status()==SlotStatus.BOOKED) throw new ConflictException("A slot can only become BOOKED through appointment booking or acceptance");
+  if (request.status()==SlotStatus.OPEN && (slot.getProvider().getStatus()!=ProviderStatus.AVAILABLE || !slot.getRoom().isAvailable()))
+   throw new ConflictException("An open slot requires an available provider and room");
+  if (request.status()==SlotStatus.OPEN && slot.getStatus()==SlotStatus.CANCELLED
+    && appointments.findBySlotIdAndStatusIn(id, java.util.List.of(AppointmentStatus.CONFIRMED, AppointmentStatus.RESCHEDULE_PENDING)).isPresent())
+   throw new ConflictException("A cancelled slot with an active appointment cannot be reopened");
   Long affectedAppointmentId = null;
   if (request.status()==SlotStatus.CANCELLED && slot.getStatus()==SlotStatus.BOOKED) {
    affectedAppointmentId=appointments.findBySlotIdAndStatusIn(id, java.util.List.of(AppointmentStatus.CONFIRMED, AppointmentStatus.RESCHEDULE_PENDING))
