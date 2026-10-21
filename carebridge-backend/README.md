@@ -53,14 +53,18 @@ curl -X PATCH http://localhost:8080/rooms/1/availability -H "Content-Type: appli
 
 The front-desk desk refreshes pending suggestions automatically and supports accepting or rejecting them. Accepting a suggestion locks the appointment and replacement slot, rechecks provider/room availability, and commits the appointment and slot updates in one transaction.
 
-## AI mode
-Set environment variables before startup:
-```bash
-export SCHEDULING_STRATEGY=ai
-export OPENAI_API_KEY=your-key
+## Local AI mode (Bionic + Qwen3-VL)
+The AI strategy uses Spring AI's OpenAI-compatible chat client pointed at Bionic's local inference endpoint. It does not require an OpenAI account or an OpenAI API key. The default configuration expects the local server at `http://localhost:1234/v1` and uses model identifier `wareef/Qwen3-VL-8B-Instruct-Q4_K_M-GGUF`.
+
+Start Bionic with the Qwen3-VL model loaded and its OpenAI-compatible chat/completions API enabled, then run the backend with:
+```powershell
+$env:SCHEDULING_STRATEGY = "ai"
+# Set these if Bionic uses a different address or reports a different model identifier:
+$env:LOCAL_LLM_BASE_URL = "http://localhost:1234/v1"
+$env:LOCAL_LLM_MODEL = "wareef/Qwen3-VL-8B-Instruct-Q4_K_M-GGUF"
 mvn spring-boot:run
 ```
-Use only a key for the configured provider/model. Do not commit credentials.
+For a local server that requires authentication, set `LOCAL_LLM_API_KEY`. Otherwise the default `local` value is only a compatibility placeholder and is not an OpenAI credential. Keep the rule-based strategy as the default by omitting `SCHEDULING_STRATEGY` when you do not want to call the local model. AI errors fall back to rule-based recommendations.
 
 ## Scope notes
 The event processing uses in-process Spring events and asynchronous listeners. This is suitable for a local assessment demonstration, but events can be lost if the process stops. Production hardening should use a transactional outbox and durable message broker. H2 is in-memory and resets when the app restarts.
