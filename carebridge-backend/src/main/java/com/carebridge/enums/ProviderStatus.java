@@ -1,2 +1,3 @@
 package com.carebridge.enums;
-public enum ProviderStatus { AVAILABLE, BUSY, OFFLINE }
+
+public enum ProviderStatus {AVAILABLE, BUSY, OFFLINE}

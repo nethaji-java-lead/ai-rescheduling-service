@@ -1,4 +1,3 @@
-
 package com.carebridge.controller;
 
 import com.carebridge.dto.request.CreateAppointmentRequest;
@@ -17,24 +16,24 @@ import java.util.List;
 @RequestMapping("/appointments")
 public class AppointmentController {
 
- private final AppointmentService service;
+    private final AppointmentService service;
 
- public AppointmentController(AppointmentService service) {
-  this.service = service;
- }
+    public AppointmentController(AppointmentService service) {
+        this.service = service;
+    }
 
- @PostMapping
- public ResponseEntity<AppointmentResponse> create(
-         @Valid @RequestBody CreateAppointmentRequest request) {
-  return ResponseEntity
-          .status(HttpStatus.CREATED)
-          .body(service.create(request));
- }
+    @PostMapping
+    public ResponseEntity<AppointmentResponse> create(
+            @Valid @RequestBody CreateAppointmentRequest request) {
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(service.create(request));
+    }
 
- @GetMapping
- public List<AppointmentResponse> list(
-         @RequestParam(name = "status", required = false)
-         AppointmentStatus status) {
-  return service.list(status);
- }
+    @GetMapping
+    public List<AppointmentResponse> list(
+            @RequestParam(name = "status", required = false)
+            AppointmentStatus status) {
+        return service.list(status);
+    }
 }

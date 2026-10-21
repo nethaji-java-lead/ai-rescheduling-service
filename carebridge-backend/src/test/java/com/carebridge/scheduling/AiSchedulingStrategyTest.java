@@ -1,10 +1,6 @@
 package com.carebridge.scheduling;
 
-import com.carebridge.enums.AppointmentType;
-import com.carebridge.enums.ProviderSpecialty;
-import com.carebridge.enums.ProviderStatus;
-import com.carebridge.enums.SlotStatus;
-import com.carebridge.enums.TriggerReason;
+import com.carebridge.enums.*;
 import com.carebridge.model.Appointment;
 import com.carebridge.model.Provider;
 import com.carebridge.model.Room;

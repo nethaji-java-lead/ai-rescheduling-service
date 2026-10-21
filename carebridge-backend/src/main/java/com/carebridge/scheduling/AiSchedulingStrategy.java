@@ -46,9 +46,12 @@ public class AiSchedulingStrategy implements SchedulingStrategy {
                 .collect(Collectors.joining("\n"));
 
         String triggerInstructions = switch (reason) {
-            case PROVIDER_OFFLINE -> "The original provider is OFFLINE. Select an OPEN slot with a different AVAILABLE provider of the same specialty. Do not recommend the offline provider.";
-            case SLOT_CANCELLED -> "The booked slot was cancelled. Prefer an OPEN replacement slot with the SAME provider. Use a matching-specialty alternate provider only if no same-provider slot is available.";
-            case INITIAL -> "For an initial suggestion, prefer the nearest eligible OPEN slot with the current provider. If none exists, use an AVAILABLE provider of the same specialty.";
+            case PROVIDER_OFFLINE ->
+                    "The original provider is OFFLINE. Select an OPEN slot with a different AVAILABLE provider of the same specialty. Do not recommend the offline provider.";
+            case SLOT_CANCELLED ->
+                    "The booked slot was cancelled. Prefer an OPEN replacement slot with the SAME provider. Use a matching-specialty alternate provider only if no same-provider slot is available.";
+            case INITIAL ->
+                    "For an initial suggestion, prefer the nearest eligible OPEN slot with the current provider. If none exists, use an AVAILABLE provider of the same specialty.";
         };
 
         String prompt = """
@@ -58,13 +61,13 @@ public class AiSchedulingStrategy implements SchedulingStrategy {
                 Appointment: id=%s, patient=%s, type/urgency=%s
                 Current provider: id=%s, name=%s, specialty=%s, status=%s
                 Current slot start: %s
-
+                
                 Eligible OPEN slot candidates (the only slot IDs allowed):
                 %s
-
+                
                 Provider roster:
                 %s
-
+                
                 Return exactly one JSON object, no Markdown:
                 {"slotId":"existing-slot-id","alternateProviderId":null,"confidence":0.0,"reasoning":"Patient-friendly explanation."}
                 Rules:
@@ -116,7 +119,8 @@ public class AiSchedulingStrategy implements SchedulingStrategy {
             }
             int first = cleaned.indexOf('{');
             int last = cleaned.lastIndexOf('}');
-            if (first < 0 || last <= first) throw new IllegalArgumentException("AI response did not contain a JSON object");
+            if (first < 0 || last <= first)
+                throw new IllegalArgumentException("AI response did not contain a JSON object");
             JsonNode node = objectMapper.readTree(cleaned.substring(first, last + 1));
 
             String slotId = textOrNull(node.path("slotId"));
@@ -127,7 +131,8 @@ public class AiSchedulingStrategy implements SchedulingStrategy {
                     || selected.getRoom() == null || !selected.getRoom().isAvailable()) return null;
 
             boolean sameProvider = selected.getProvider().getId().equals(appointment.getProvider().getId());
-            if (!sameProvider && selected.getProvider().getSpecialty() != appointment.getProvider().getSpecialty()) return null;
+            if (!sameProvider && selected.getProvider().getSpecialty() != appointment.getProvider().getSpecialty())
+                return null;
             if (reason == TriggerReason.PROVIDER_OFFLINE && sameProvider) return null;
             if (reason == TriggerReason.SLOT_CANCELLED) {
                 boolean sameProviderExists = candidates.stream()

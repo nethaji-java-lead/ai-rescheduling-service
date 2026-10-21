@@ -1,4 +1,3 @@
-
 package com.slotmind.ai;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -19,14 +18,14 @@ import java.util.Map;
 
 /**
  * Provider-neutral LLM gateway for CareBridge.
- *
+ * <p>
  * Supported providers:
  * - lmstudio: LM Studio OpenAI-compatible API
  * - bionic:   OpenAI-compatible local API
  * - ollama:   OpenAI-compatible Ollama API
  * - groq:     Groq OpenAI-compatible API
  * - gemini:   Google Gemini generateContent API
- *
+ * <p>
  * Default local model:
  * llama-3.2-3b-instruct
  */
@@ -85,6 +84,43 @@ public class LLMGateway {
                 this.provider, this.model, this.baseUrl);
     }
 
+    private static String defaultBaseUrl(String provider) {
+        return switch (provider) {
+            case "gemini" -> "https://generativelanguage.googleapis.com/v1beta";
+
+            case "groq" -> "https://api.groq.com/openai/v1";
+
+            case "ollama" -> "http://localhost:11434/v1";
+
+            case "lmstudio" -> "http://localhost:1235/v1";
+
+            case "bionic" -> "http://localhost:1234/v1";
+
+            default -> "http://localhost:1235/v1";
+        };
+    }
+
+    private static String defaultModel(String provider) {
+        return switch (provider) {
+            case "gemini" -> "gemini-2.5-flash";
+            case "groq" -> "llama-3.3-70b-versatile";
+            case "ollama" -> "qwen3-vl:8b";
+            case "bionic" -> "Qwen3-VL-8B-Instruct-Q4_K_M-GGUF";
+            case "lmstudio" -> "llama-3.2-3b-instruct";
+            default -> "llama-3.2-3b-instruct";
+        };
+    }
+
+    private static String stripTrailingSlash(String value) {
+        String result = value.trim();
+
+        while (result.endsWith("/")) {
+            result = result.substring(0, result.length() - 1);
+        }
+
+        return result;
+    }
+
     /**
      * Sends a prompt to the configured LLM and returns its text response.
      */
@@ -104,8 +140,7 @@ public class LLMGateway {
             String answer = switch (provider) {
                 case "gemini" -> callGemini(prompt);
 
-                case "lmstudio", "bionic", "ollama", "groq" ->
-                        callOpenAiCompatible(prompt);
+                case "lmstudio", "bionic", "ollama", "groq" -> callOpenAiCompatible(prompt);
 
                 default -> throw new IllegalStateException(
                         "Unsupported carebridge.ai.provider '"
@@ -288,51 +323,5 @@ public class LLMGateway {
                             + "Check model ID, endpoint, and API key.",
                     exception);
         }
-    }
-
-    private static String defaultBaseUrl(String provider) {
-        return switch (provider) {
-            case "gemini" ->
-                    "https://generativelanguage.googleapis.com/v1beta";
-
-            case "groq" ->
-                    "https://api.groq.com/openai/v1";
-
-            case "ollama" ->
-                    "http://localhost:11434/v1";
-
-            case "lmstudio" ->
-                    "http://localhost:1235/v1";
-
-            case "bionic" ->
-                    "http://localhost:1234/v1";
-
-            default ->
-                    "http://localhost:1235/v1";
-        };
-    }
-
-    private static String defaultModel(String provider) {
-        return switch (provider) {
-            case "gemini" -> "gemini-2.5-flash";
-            case "groq" -> "llama-3.3-70b-versatile";
-            case "ollama" -> "qwen3-vl:8b";
-            case "bionic" ->
-                    "Qwen3-VL-8B-Instruct-Q4_K_M-GGUF";
-            case "lmstudio" ->
-                    "llama-3.2-3b-instruct";
-            default ->
-                    "llama-3.2-3b-instruct";
-        };
-    }
-
-    private static String stripTrailingSlash(String value) {
-        String result = value.trim();
-
-        while (result.endsWith("/")) {
-            result = result.substring(0, result.length() - 1);
-        }
-
-        return result;
     }
 }
