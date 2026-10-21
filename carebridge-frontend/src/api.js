@@ -1,4 +1,3 @@
-
 const API_BASE_URL = (
     import.meta.env.VITE_API_BASE_URL || "http://localhost:8080"
 ).replace(/\/+$/, "");
@@ -99,6 +98,7 @@ export function suggestReschedule(appointmentId) {
 }
 
 export const generateSuggestions = suggestReschedule;
+export const generateSuggestion = suggestReschedule;
 
 // --------------------------------------------------
 // Slots
@@ -164,3 +164,30 @@ export async function checkBackendHealth() {
         return false;
     }
 }
+
+// --------------------------------------------------
+// Default Export Object
+// --------------------------------------------------
+
+export const api = {
+    getProviders,
+    fetchProviders,
+    updateProviderStatus,
+    changeProviderStatus,
+    getAppointments,
+    fetchAppointments,
+    createAppointment,
+    suggestReschedule,
+    generateSuggestions,
+    generateSuggestion,
+    getSlots,
+    fetchSlots,
+    updateSlotStatus,
+    getSuggestions,
+    fetchSuggestions,
+    updateSuggestionStatus,
+    reviewSuggestion,
+    checkBackendHealth,
+};
+
+export default api;

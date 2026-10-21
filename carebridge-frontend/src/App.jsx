@@ -1,80 +1,6 @@
-
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { api } from "./api";
+import * as api from "./api";
 import "./index.css";
-
-const demoAppointments = [
-  {
-    id: "APT-001",
-    patientName: "John Martinez",
-    appointmentType: "ROUTINE",
-    providerId: "PRV-001",
-    providerName: "Dr. Sarah Chen",
-    slotId: "SLT-001",
-    status: "RESCHEDULE_PENDING",
-  },
-  {
-    id: "APT-002",
-    patientName: "Emily Watson",
-    appointmentType: "FOLLOW_UP",
-    providerId: "PRV-001",
-    providerName: "Dr. Sarah Chen",
-    slotId: "SLT-002",
-    status: "RESCHEDULE_PENDING",
-  },
-  {
-    id: "APT-003",
-    patientName: "Aisha Patel",
-    appointmentType: "URGENT",
-    providerId: "PRV-003",
-    providerName: "Dr. Priya Sharma",
-    slotId: "SLT-003",
-    status: "CONFIRMED",
-  },
-  {
-    id: "APT-004",
-    patientName: "Robert Kim",
-    appointmentType: "ROUTINE",
-    providerId: "PRV-005",
-    providerName: "Dr. Ananya Iyer",
-    slotId: "SLT-006",
-    status: "CONFIRMED",
-  },
-];
-
-const demoProviders = [
-  { id: "PRV-001", name: "Dr. Sarah Chen", specialty: "GENERAL", status: "BUSY" },
-  { id: "PRV-002", name: "Dr. James Okonkwo", specialty: "SPECIALIST", status: "AVAILABLE" },
-  { id: "PRV-003", name: "Dr. Priya Sharma", specialty: "PEDIATRIC", status: "BUSY" },
-  { id: "PRV-004", name: "Dr. Rahul Verma", specialty: "GENERAL", status: "AVAILABLE" },
-  { id: "PRV-005", name: "Dr. Ananya Iyer", specialty: "SPECIALIST", status: "BUSY" },
-];
-
-const demoSuggestions = [
-  {
-    id: "SUG-001",
-    appointmentId: "APT-001",
-    patientName: "John Martinez",
-    recommendedSlotId: "SLT-005",
-    confidence: 0.94,
-    reasoning: "A nearby available slot with a general practitioner can reduce disruption for the patient.",
-    status: "PENDING",
-  },
-  {
-    id: "SUG-002",
-    appointmentId: "APT-002",
-    patientName: "Emily Watson",
-    recommendedSlotId: "SLT-004",
-    confidence: 0.88,
-    reasoning: "An alternative provider is available. Front-desk approval is required before confirming the change.",
-    status: "PENDING",
-  },
-];
-
-const demoSlots = [
-  { id: "SLT-004", providerId: "PRV-002", startTime: "Available alternative" },
-  { id: "SLT-005", providerId: "PRV-004", startTime: "Available alternative" },
-];
 
 const getArray = (data) => {
   if (Array.isArray(data)) return data;
@@ -114,10 +40,10 @@ function StatusBadge({ status }) {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("Overview");
-  const [appointments, setAppointments] = useState(demoAppointments);
-  const [providers, setProviders] = useState(demoProviders);
-  const [suggestions, setSuggestions] = useState(demoSuggestions);
-  const [slots] = useState(demoSlots);
+  const [appointments, setAppointments] = useState([]);
+  const [providers, setProviders] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [slots, setSlots] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
@@ -127,21 +53,20 @@ export default function App() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [appointmentData, suggestionData] = await Promise.all([
+      const [appointmentData, suggestionData, providerData] = await Promise.all([
         api.getAppointments(),
         api.getSuggestions(),
+        api.getProviders(),
       ]);
 
       setAppointments(getArray(appointmentData));
       setSuggestions(getArray(suggestionData));
+      setProviders(getArray(providerData));
       setConnected(true);
-
-      // Provider details may not have a list endpoint in the current backend.
-      // Keep the known roster until that endpoint is available.
       setNotice("");
-    } catch {
+    } catch (error) {
       setConnected(false);
-      setNotice("Backend unavailable. Showing demo data; changes will not be saved.");
+      setNotice(`Backend connection failed: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -174,18 +99,9 @@ export default function App() {
   const updateProvider = async (provider, status) => {
     setBusyId(provider.id);
     try {
-      if (connected) {
-        await api.updateProviderStatus(provider.id, status);
-        await refresh();
-        setNotice(`${provider.name} status updated to ${pretty(status)}.`);
-      } else {
-        setProviders((current) =>
-            current.map((item) =>
-                item.id === provider.id ? { ...item, status } : item
-            )
-        );
-        setNotice("Demo only: provider status changed locally, not on the backend.");
-      }
+      await api.updateProviderStatus(provider.id, status);
+      await refresh();
+      setNotice(`${provider.name || provider.id} status updated to ${pretty(status)}.`);
     } catch (error) {
       setNotice(`Could not update provider: ${error.message}`);
     } finally {
@@ -196,20 +112,16 @@ export default function App() {
   const reviewSuggestion = async (suggestion, status) => {
     setBusyId(suggestion.id);
     try {
-      if (connected) {
-        await api.updateSuggestionStatus(suggestion.id, status);
-        await refresh();
-        setNotice(`Suggestion ${pretty(status).toLowerCase()}.`);
-      } else {
-        setSuggestions((current) =>
-            current.map((item) =>
-                item.id === suggestion.id ? { ...item, status } : item
-            )
-        );
-        setNotice(`Demo only: suggestion ${pretty(status).toLowerCase()} locally.`);
-      }
+      await api.updateSuggestionStatus(suggestion.id, status);
+      await refresh();
+      setNotice(`Suggestion ${pretty(status).toLowerCase()}.`);
     } catch (error) {
-      setNotice(`Could not review suggestion: ${error.message}`);
+      if (error.message.includes("409")) {
+        setNotice("This recommended slot is no longer available. Suggestions refreshed.");
+        await refresh();
+      } else {
+        setNotice(`Could not review suggestion: ${error.message}`);
+      }
     } finally {
       setBusyId("");
     }
@@ -218,14 +130,10 @@ export default function App() {
   const generateSuggestion = async (appointment) => {
     setBusyId(appointment.id);
     try {
-      if (!connected) {
-        setNotice("Start the backend to generate a real scheduling suggestion.");
-        return;
-      }
       await api.generateSuggestion(appointment.id);
       await refresh();
       setActiveTab("Rescheduling");
-      setNotice("Suggestion request submitted. Refresh if the backend processes it asynchronously.");
+      setNotice("Suggestion request submitted.");
     } catch (error) {
       setNotice(`Could not request a suggestion: ${error.message}`);
     } finally {
@@ -296,7 +204,7 @@ export default function App() {
             <div className="topbar-right">
             <span className={`connection ${connected ? "online" : "offline"}`}>
               <span className="connection-dot" />
-              {connected ? "Backend connected" : "Demo mode"}
+              {connected ? "Backend connected" : "Disconnected"}
             </span>
               <button className="icon-button" title="Refresh data" onClick={refresh}>↻</button>
               <div className="top-avatar">FD</div>
@@ -542,30 +450,36 @@ function SuggestionCard({ suggestion, onReview, busyId, detailed = false }) {
 }
 
 function ProviderGrid({ providers, onUpdate, busyId, detailed = false }) {
+  if (!providers.length) return <EmptyState text="No providers found." />;
+
   return (
       <div className={`provider-grid ${detailed ? "provider-grid-detailed" : ""}`}>
-        {providers.map((provider) => (
-            <div className="provider-card" key={provider.id}>
-              <div className="provider-top">
-                <div className="provider-avatar">{provider.name.split(" ").slice(-1)[0][0]}</div>
-                <StatusBadge status={provider.status} />
+        {providers.map((provider) => {
+          const providerName = provider.name || `Provider ${provider.id}`;
+          const initial = providerName.split(" ").slice(-1)[0]?.[0] || "P";
+          return (
+              <div className="provider-card" key={provider.id}>
+                <div className="provider-top">
+                  <div className="provider-avatar">{initial}</div>
+                  <StatusBadge status={provider.status} />
+                </div>
+                <h3>{providerName}</h3>
+                <p>{pretty(provider.specialty)}</p>
+                <div className="provider-id">{provider.id}</div>
+                <label className="provider-label" htmlFor={`status-${provider.id}`}>Update availability</label>
+                <select
+                    id={`status-${provider.id}`}
+                    value={provider.status || "AVAILABLE"}
+                    disabled={busyId === provider.id}
+                    onChange={(event) => onUpdate(provider, event.target.value)}
+                >
+                  <option value="AVAILABLE">Available</option>
+                  <option value="BUSY">Busy</option>
+                  <option value="OFFLINE">Offline</option>
+                </select>
               </div>
-              <h3>{provider.name}</h3>
-              <p>{pretty(provider.specialty)}</p>
-              <div className="provider-id">{provider.id}</div>
-              <label className="provider-label" htmlFor={`status-${provider.id}`}>Update availability</label>
-              <select
-                  id={`status-${provider.id}`}
-                  value={provider.status}
-                  disabled={busyId === provider.id}
-                  onChange={(event) => onUpdate(provider, event.target.value)}
-              >
-                <option value="AVAILABLE">Available</option>
-                <option value="BUSY">Busy</option>
-                <option value="OFFLINE">Offline</option>
-              </select>
-            </div>
-        ))}
+          );
+        })}
       </div>
   );
 }
